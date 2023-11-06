@@ -19,7 +19,6 @@ const CHANNEL_SIZE: usize = 1024;
 
 #[derive(Debug)]
 pub struct Room {
-    // name: Box<str>,
     main: MpscSender<RoomMessage>,
     broadcast: BroadcastSender<WsMessage>,
 }
@@ -119,7 +118,6 @@ impl Room {
         });
 
         Self {
-            // name,
             main: main_tx,
             broadcast: broadcast_tx,
         }
