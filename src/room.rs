@@ -1,6 +1,6 @@
 use crate::packet::PacketOut;
 use crate::registry::Registry;
-use axum::extract::ws::{Message as WsMessage, WebSocket};
+use axum::extract::ws::{Message as WsMessage, Message, WebSocket};
 use axum::Error;
 use futures::stream::SplitSink;
 use futures::{SinkExt, StreamExt};
@@ -152,18 +152,17 @@ impl Room {
                 .expect("send failed");
             loop {
                 match rx.next().await {
-                    Some(Ok(_msg)) =>
-                    // TODO: parse message and ensure it's a buzz.
-                    {
+                    Some(Ok(WsMessage::Text(_))) => {
+                        // TODO: parse message and ensure it's a buzz.
                         main_tx
                             .send(RoomMessage::Buzzed(
                                 Arc::clone(&participant),
                                 Instant::now(),
                             ))
                             .await
-                            .expect("send failed")
+                            .expect("send failed");
                     }
-                    Some(Err(_)) | None => {
+                    Some(Ok(WsMessage::Close(_))) | Some(Ok(_)) | Some(Err(_)) | None => {
                         // TODO: log error.
                         main_tx
                             .send(RoomMessage::ParticipantLeft)
