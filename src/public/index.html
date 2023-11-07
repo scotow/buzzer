@@ -10,10 +10,16 @@
     <script defer src="app.js"></script>
 </head>
 <body>
-    <div class="lobby panel">
-        <div class="action host">Host</div>
-        <div class="action join">Join</div>
+    <div id="lobby" class="page">
+        <div class="panel">
+            <div class="actions">
+                <div class="join action">Join</div>
+                <div class="host action">Host</div>
+            </div>
+            <input type="text" class="room-name" placeholder="Room">
+            <input type="text" class="participant-name" placeholder="Name">
+            <div class="create">Host</div>
+        </div>
     </div>
-    <div id="buzzer" class="buzzer"></div>
 </body>
 </html>
