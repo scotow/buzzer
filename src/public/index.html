@@ -5,6 +5,9 @@
     <meta name="viewport"
           content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <title>Buzzer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="normalize.css">
     <link rel="stylesheet" href="app.css">
     <script defer src="app.js"></script>
@@ -12,13 +15,35 @@
 <body>
     <div id="lobby" class="page">
         <div class="panel">
-            <div class="actions">
-                <div class="join action">Join</div>
-                <div class="host action">Host</div>
+            <div class="icon"></div>
+            <div class="title panel">
+                <div class="label">Buzzer</div>
+                <div class="main panel">
+                    <div class="modes">
+                        <div class="mode join selected">
+                            <div class="icon"></div>
+                            <div class="label">Join</div>
+                        </div>
+                        <div class="mode host">
+                            <div class="icon"></div>
+                            <div class="label">Host</div>
+                        </div>
+                    </div>
+                    <div class="input">
+                        <div class="label">
+                            Room
+                        </div>
+                        <input type="text" placeholder="...">
+                    </div>
+                    <div class="input">
+                        <div class="label">
+                            Name
+                        </div>
+                        <input type="text" placeholder="...">
+                    </div>
+                    <div class="action">Proceed</div>
+                </div>
             </div>
-            <input type="text" class="room-name" placeholder="Room">
-            <input type="text" class="participant-name" placeholder="Name">
-            <div class="create">Host</div>
         </div>
     </div>
 </body>
