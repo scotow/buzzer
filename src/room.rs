@@ -187,9 +187,9 @@ impl Run {
 
     fn buzz(&mut self, buzzer: Ulid, time: Instant) -> BuzzResult {
         // Start from the back because it's likely the last participant spamming the buzzer.
-        if self.buzzed.iter().rev().any(|(b, _)| b == &buzzer) {
-            return BuzzResult::Already;
-        }
+        // if self.buzzed.iter().rev().any(|(b, _)| b == &buzzer) {
+        //     return BuzzResult::Already;
+        // }
         let res = if self.buzzed.is_empty() {
             BuzzResult::First
         } else {

@@ -8,6 +8,7 @@ pub enum PacketOut {
     ParticipantCount {
         count: usize,
     },
+    #[serde(rename_all(serialize = "camelCase"))]
     Buzzed {
         name: Box<str>,
         timestamp_diff: Option<u64>,

@@ -12,37 +12,53 @@
     <link rel="stylesheet" href="app.css">
     <script defer src="app.js"></script>
 </head>
-<body>
-    <div id="lobby" class="page">
-        <div class="panel">
-            <div class="icon"></div>
-            <div class="title panel">
-                <div class="label">Buzzer</div>
-                <div class="main panel">
-                    <div class="modes">
-                        <div class="mode join selected">
-                            <div class="icon"></div>
-                            <div class="label">Join</div>
-                        </div>
-                        <div class="mode host">
-                            <div class="icon"></div>
-                            <div class="label">Host</div>
-                        </div>
+<body class="lobby">
+    <div class="lobby main panel">
+        <div class="icon"></div>
+        <div class="title panel">
+            <div class="label">Buzzer</div>
+            <div class="inner panel">
+                <div class="modes">
+                    <div id="lobby-join-mode" class="mode join selected">
+                        <div class="icon"></div>
+                        <div class="label">Join</div>
                     </div>
-                    <div class="input">
-                        <div class="label">
-                            Room
-                        </div>
-                        <input type="text" placeholder="...">
+                    <div id="lobby-host-mode" class="mode host">
+                        <div class="icon"></div>
+                        <div class="label">Host</div>
                     </div>
-                    <div class="input">
-                        <div class="label">
-                            Name
-                        </div>
-                        <input type="text" placeholder="...">
-                    </div>
-                    <div class="action">Proceed</div>
                 </div>
+                <div class="room input">
+                    <div class="label">
+                        Room
+                    </div>
+                    <input type="text" value="DAC" autofocus>
+                </div>
+                <div class="username input">
+                    <div class="label">
+                        Username
+                    </div>
+                    <input type="text" value="Me">
+                </div>
+                <div class="action">Join room</div>
+            </div>
+        </div>
+    </div>
+    <div class="host main panel">
+        <div class="icon"></div>
+        <div class="title panel">
+            <div class="label">Hosting</div>
+            <div class="inner panel">
+
+            </div>
+        </div>
+    </div>
+    <div class="participate main panel">
+        <div class="icon"></div>
+        <div class="title panel">
+            <div class="label">Participate</div>
+            <div class="inner panel">
+                <div class="buzzer"></div>
             </div>
         </div>
     </div>
