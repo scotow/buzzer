@@ -1,48 +1,3 @@
-// (async function() {
-//     document.querySelector('.host').addEventListener('click', () => {
-//         (async function() {
-//             const response = await fetch("/rooms", {
-//                 method: "POST",
-//                 headers: {
-//                     "Content-Type": "application/json",
-//                 },
-//                 body: JSON.stringify({
-//                     name: "dac"
-//                 }),
-//             });
-//             let id = await response.text();
-//             console.log(id);
-//
-//             const hostSocket = new WebSocket(`ws://localhost:8080/rooms/${id}/host`);
-//             hostSocket.addEventListener("message", (message) => {
-//                 console.log(message.data);
-//             });
-//         })();
-//     });
-//
-//     document.querySelector('.join').addEventListener('click', () => {
-//         (async function() {
-//             const response = await fetch('/rooms/id?name=dac', {
-//                 method: 'GET',
-//             });
-//             let id = await response.text();
-//             console.log(id);
-//
-//             const participateSocket = new WebSocket(`ws://localhost:8080/rooms/${id}/participate?name=Scotow`);
-//             participateSocket.addEventListener("message", (message) => {
-//                 console.log(message.data);
-//             });
-//
-//             document.getElementById('buzzer').addEventListener('click', () => {
-//                 participateSocket.send('buzz');
-//             });
-//         })();
-//     });
-//
-// })().then(out => {
-//     console.log(out);
-// });
-
 async function host() {
     document.body.classList.replace('lobby', 'host');
 
@@ -55,8 +10,10 @@ async function host() {
             name: "dac"
         }),
     });
-    let id = await response.text();
-    console.log(id);
+    let { id, name } = await response.json();
+    console.log(id, name);
+
+    document.querySelector('.host.panel .title.panel > .labels > .label').innerText = name;
 
     const hostSocket = new WebSocket(`ws://localhost:8080/rooms/${id}/host`);
     hostSocket.addEventListener("message", (message) => {
@@ -87,6 +44,9 @@ async function host() {
 
                 document.querySelector('.host.panel .inner.panel').append(buzzElem);
                 break;
+            case 'participantCount':
+                document.querySelector('.host.panel .title.panel > .labels > .sub-label').innerText = `${data.count} participant${data.count !== 1 ? 's' : ''}`;
+                break;
         }
     });
 }
@@ -97,12 +57,25 @@ async function join() {
     const response = await fetch('/rooms/id?name=dac', {
         method: 'GET',
     });
-    let id = await response.text();
-    console.log(id);
+    let { id, name } = await response.json();
+    console.log(id, name);
+
+    document.querySelector('.participate.panel .title.panel > .labels > .label').innerText = name;
 
     const participateSocket = new WebSocket(`ws://localhost:8080/rooms/${id}/participate?name=Scotow`);
-    participateSocket.addEventListener("message", (message) => {
-        console.log(message.data);
+    participateSocket.addEventListener('message', (message) => {
+        const data = JSON.parse(message.data);
+        console.log(data);
+        switch (data.event) {
+            case 'participantCount':
+                document.querySelector('.participate.panel .title.panel > .labels > .sub-label').innerText = `${data.count} participant${data.count !== 1 ? 's' : ''}`;
+                break;
+            case 'hostLeft':
+                alert('The host has closed the room.');
+                participateSocket.close();
+                document.body.classList.replace('participate', 'lobby');
+                break;
+        }
     });
 
     document.querySelector('.participate.panel .buzzer').addEventListener('click', () => {
@@ -110,7 +83,7 @@ async function join() {
     });
 }
 
-let shiftOffset = 72 / 2; // Placeholder.
+// let shiftOffset = 72 / 2; // Placeholder.
 // document.addEventListener('DOMContentLoaded', () => {
 //     setTimeout(() => {
 //         shiftOffset = (document.querySelector('#lobby .input.username').clientHeight + 14) / 2;

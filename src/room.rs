@@ -7,6 +7,7 @@ use futures::{SinkExt, StreamExt};
 use serde::Deserialize;
 use serde_json::json;
 use std::collections::HashSet;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
 use std::time::Instant;
 use tokio::sync::broadcast::error::RecvError;
@@ -29,6 +30,7 @@ impl Room {
         let (broadcast_tx, _broadcast_rx) = broadcast::channel(CHANNEL_SIZE);
         let (mut host_tx, mut host_rx) = host.split();
 
+        let self_broadcast_tx = broadcast_tx.clone();
         tokio::spawn(async move {
             let mut participants_count = 0;
             let mut run = Run::new();
@@ -39,15 +41,11 @@ impl Room {
                 match msg {
                     RoomMessage::ParticipantJoin => {
                         participants_count += 1;
-                        host_tx
-                            .send(
-                                PacketOut::ParticipantCount {
-                                    count: participants_count,
-                                }
-                                .into(),
-                            )
-                            .await
-                            .expect("send failed");
+                        let packet = WsMessage::from(PacketOut::ParticipantCount {
+                            count: participants_count,
+                        });
+                        host_tx.send(packet.clone()).await.expect("send failed");
+                        self_broadcast_tx.send(packet).expect("send failed");
                     }
                     RoomMessage::Buzzed(buzzer, timestamp) => {
                         let timestamp_diff = match run.buzz(buzzer.id, timestamp) {
@@ -71,15 +69,13 @@ impl Room {
                     }
                     RoomMessage::ParticipantLeft => {
                         participants_count -= 1;
-                        host_tx
-                            .send(
-                                PacketOut::ParticipantCount {
-                                    count: participants_count,
-                                }
-                                .into(),
-                            )
-                            .await
-                            .expect("send failed");
+                        let packet = WsMessage::from(PacketOut::ParticipantCount {
+                            count: participants_count,
+                        });
+                        host_tx.send(packet.clone()).await.expect("send failed");
+                        if participants_count > 0 {
+                            self_broadcast_tx.send(packet).expect("send failed");
+                        }
                     }
                     RoomMessage::HostLeft => {
                         registry
@@ -88,6 +84,8 @@ impl Room {
                             .lock()
                             .await
                             .remove(id, name);
+                        // If the host was alone, the broadcast channel is already partially closed.
+                        _ = self_broadcast_tx.send(WsMessage::from(PacketOut::HostLeft));
                         return;
                     }
                 }
@@ -98,20 +96,20 @@ impl Room {
         tokio::spawn(async move {
             loop {
                 match host_rx.next().await {
-                    Some(Ok(_msg)) => {
-                        // TODO: parse message and ensure it's a buzz.
+                    Some(Ok(WsMessage::Text(_))) => {
+                        // TODO: parse message and ensure it's a clear.
                         self_main_tx
                             .send(RoomMessage::Clear)
                             .await
                             .expect("send failed");
                     }
-                    Some(Err(_)) | None => {
+                    Some(Ok(WsMessage::Close(_))) | Some(Ok(_)) | Some(Err(_)) | None => {
                         // TODO: log error.
                         self_main_tx
                             .send(RoomMessage::HostLeft)
                             .await
                             .expect("send failed");
-                        break;
+                        return;
                     }
                 }
             }
@@ -133,14 +131,19 @@ impl Room {
         let mut main_tx = self.main.clone();
         let mut broadcast_rx = self.broadcast.subscribe();
 
-        // TODO: check if either loop break ends the other.
-        tokio::spawn(async move {
+        // TODO: if either loop breaks, end the other.
+        let rx_handle = tokio::spawn(async move {
             loop {
                 match broadcast_rx.recv().await {
-                    Ok(msg) => tx.send(msg).await.expect("send failed"),
+                    Ok(msg) => {
+                        if tx.send(msg).await.is_err() {
+                            return;
+                        };
+                    }
                     Err(_err) => {
                         // TODO: send "connection lost / room closed" error.
-                        tx.close().await.expect("close failed");
+                        _ = tx.close().await;
+                        return;
                     }
                 }
             }
@@ -154,21 +157,22 @@ impl Room {
                 match rx.next().await {
                     Some(Ok(WsMessage::Text(_))) => {
                         // TODO: parse message and ensure it's a buzz.
-                        main_tx
+                        if main_tx
                             .send(RoomMessage::Buzzed(
                                 Arc::clone(&participant),
                                 Instant::now(),
                             ))
                             .await
-                            .expect("send failed");
+                            .is_err()
+                        {
+                            rx_handle.abort();
+                            return;
+                        }
                     }
                     Some(Ok(WsMessage::Close(_))) | Some(Ok(_)) | Some(Err(_)) | None => {
-                        // TODO: log error.
-                        main_tx
-                            .send(RoomMessage::ParticipantLeft)
-                            .await
-                            .expect("send failed");
-                        break;
+                        rx_handle.abort();
+                        _ = main_tx.send(RoomMessage::ParticipantLeft).await;
+                        return;
                     }
                 }
             }

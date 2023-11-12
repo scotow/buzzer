@@ -55,11 +55,20 @@ body.participate > .participate.panel {
     background-color: #202020;
 }
 
-.main.panel .title.panel > .label {
-    margin: 12px 0 8px;
+.main.panel .title.panel > .labels {
+    padding: 12px 0 8px;
+    text-align: center;
+}
+
+.main.panel .title.panel > .labels > .label {
     font-size: 24px;
     font-weight: bold;
-    text-align: center;
+}
+
+.main.panel .title.panel > .labels > .sub-label {
+    margin-top: 4px;
+    font-size: 16px;
+    /*font-weight: bold;*/
 }
 
 .main.panel .inner.panel {

@@ -1,11 +1,12 @@
 use crate::registry::Registry;
 use axum::extract::ws::WebSocket;
 use axum::extract::{Path, Query, State, WebSocketUpgrade};
-use axum::http::{header, HeaderValue};
+use axum::http::{header, HeaderValue, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::Deserialize;
+use serde_json::json;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tower_http::set_header::SetResponseHeaderLayer;
@@ -18,6 +19,9 @@ mod room;
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
+    log_panics::init();
+
     let router = Router::new()
         .route("/rooms", post(reserve_room))
         .route("/rooms/id", get(find_room_by_name))
@@ -46,13 +50,19 @@ async fn reserve_room(
     State(registry): State<Arc<Mutex<Registry>>>,
     Json(request): Json<ReserveRoom>,
 ) -> impl IntoResponse {
-    registry
+    let (id, name) = registry
         .lock()
         .await
         .reserve(request.name.into_boxed_str())
         .await
-        .unwrap()
-        .to_string()
+        .unwrap();
+    (
+        StatusCode::CREATED,
+        Json(json!({
+            "id": id,
+            "name": name,
+        })),
+    )
 }
 
 async fn host_room(
@@ -75,7 +85,14 @@ async fn find_room_by_name(
     State(registry): State<Arc<Mutex<Registry>>>,
     Query(FindRoomByNameQuery { name }): Query<FindRoomByNameQuery>,
 ) -> impl IntoResponse {
-    registry.lock().await.find_room(&name).unwrap().to_string()
+    let (id, name) = registry.lock().await.find_room(&name).unwrap();
+    (
+        StatusCode::OK,
+        Json(json!({
+            "id": id,
+            "name": name,
+        })),
+    )
 }
 
 #[derive(Deserialize)]

@@ -13,6 +13,7 @@ pub enum PacketOut {
         name: Box<str>,
         timestamp_diff: Option<u64>,
     },
+    HostLeft,
 }
 
 impl From<PacketOut> for WsMessage {
