@@ -195,7 +195,7 @@ function run(mode, name, socket, panelElem) {
     function exit() {
         socket.close();
         document.body.classList.replace(mode, 'lobby');
-        panelElem.querySelector('.inner.panel').replaceChildren();
+        panelElem.querySelectorAll('.inner.panel .buzz').forEach((elem) => elem.remove());
         panelElem.querySelector('.buzzer')?.removeEventListener('click', handleBuzz);
         panelElem.querySelector('.leave.action')?.removeEventListener('click', handleLeave);
         panelElem.querySelector('.clear.action')?.removeEventListener('click', handleClear);
