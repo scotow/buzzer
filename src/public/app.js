@@ -77,7 +77,9 @@ function run(mode, name, socket, panelElem) {
     document.body.classList.replace('lobby', mode);
     panelElem.querySelector('.title.panel > .labels > .label').innerText = name;
 
+    let buzzTimeout = null;
     let buzz = 0;
+    let initiatedLeave = false;
 
     socket.addEventListener('message', (message) => {
         const data = JSON.parse(message.data);
@@ -141,7 +143,9 @@ function run(mode, name, socket, panelElem) {
     });
 
     socket.addEventListener('error', () => {
-        alert('An error occurred');
+        if (!initiatedLeave) {
+            alert('An error occurred');
+        }
         exit();
     });
 
@@ -150,6 +154,7 @@ function run(mode, name, socket, panelElem) {
     }
 
     function handleLeave() {
+        initiatedLeave = true;
         if (mode === 'participate' || confirm('You\'re about to close the room and kick every participant out. Confirm?')) {
             exit();
         }
@@ -161,6 +166,32 @@ function run(mode, name, socket, panelElem) {
         panelElem.querySelector('.inner.panel').replaceChildren();
     }
 
+    function keyDown(event) {
+        switch (mode) {
+            case 'host':
+                switch (event.key) {
+                    case 'Backspace':
+                    case 'Escape':
+                        event.preventDefault();
+                        handleClear();
+                        break;
+                }
+                break;
+            case 'participate':
+                if (event.key === ' ') {
+                    handleBuzz();
+                    if (buzzTimeout !== null) {
+                        clearTimeout(buzzTimeout);
+                    }
+                    panelElem.querySelector('.buzzer').classList.add('buzzing');
+                    buzzTimeout = setTimeout(() => {
+                        panelElem.querySelector('.buzzer').classList.remove('buzzing');
+                    }, 200);
+                }
+                break;
+        }
+    }
+
     function exit() {
         socket.close();
         document.body.classList.replace(mode, 'lobby');
@@ -168,9 +199,11 @@ function run(mode, name, socket, panelElem) {
         panelElem.querySelector('.buzzer')?.removeEventListener('click', handleBuzz);
         panelElem.querySelector('.leave.action')?.removeEventListener('click', handleLeave);
         panelElem.querySelector('.clear.action')?.removeEventListener('click', handleClear);
+        window.removeEventListener('keydown', keyDown);
     }
 
     panelElem.querySelector('.buzzer')?.addEventListener('click', handleBuzz);
     panelElem.querySelector('.leave.action')?.addEventListener('click', handleLeave);
     panelElem.querySelector('.clear.action')?.addEventListener('click', handleClear);
+    window.addEventListener('keydown', keyDown);
 }

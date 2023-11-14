@@ -330,7 +330,7 @@ body.participate > .participate.panel {
     /*box-shadow: 0px -6px #803030 inset;*/
 }
 
-.buzzer:active {
+.buzzer:active, .buzzer.buzzing {
     box-shadow:  0px 6px #803030;
     transform: translateY(6px);
     /*box-shadow: 0px -6px #803030 inset;*/
