@@ -123,6 +123,11 @@ function run(mode, name, socket, panelElem) {
         }
     });
 
+    socket.addEventListener('error', () => {
+        alert('An error occurred');
+        exit();
+    });
+
     function handleBuzz() {
         socket.send(JSON.stringify({ event: 'buzz' }));
     }

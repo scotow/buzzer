@@ -15,6 +15,7 @@ const CHANNEL_SIZE: usize = 1024;
 
 #[derive(Debug)]
 pub struct Room {
+    pub name: Box<str>,
     main: MpscSender<RoomMessage>,
     broadcast: BroadcastSender<WsMessage>,
 }
@@ -25,6 +26,7 @@ impl Room {
         let (broadcast_tx, _broadcast_rx) = broadcast::channel(CHANNEL_SIZE);
         let (mut host_tx, mut host_rx) = host.split();
 
+        let self_name = name.clone();
         let self_broadcast_tx = broadcast_tx.clone();
         tokio::spawn(async move {
             let mut participants_count = 0;
@@ -78,7 +80,7 @@ impl Room {
                             .expect("registry deallocated")
                             .lock()
                             .await
-                            .remove(id, name);
+                            .remove(id, self_name);
                         // If the host was alone, the broadcast channel is already partially closed.
                         _ = self_broadcast_tx.send(WsMessage::from(PacketOut::HostLeft));
                         return;
@@ -111,6 +113,7 @@ impl Room {
         });
 
         Self {
+            name,
             main: main_tx,
             broadcast: broadcast_tx,
         }

@@ -19,6 +19,9 @@ mod error;
 mod packet;
 mod registry;
 mod room;
+mod utils;
+
+const USERNAME_MIN_LEN: usize = 2;
 
 #[tokio::main]
 async fn main() {
@@ -29,7 +32,7 @@ async fn main() {
         .route("/rooms", post(reserve_room))
         .route("/rooms/id", get(find_room_by_name))
         .route("/rooms/:id/host", get(host_room))
-        .route("/rooms/:id/participate", get(participate_room))
+        .route("/rooms/:id/participate", get(join_room))
         .with_state(Arc::new(Mutex::new(Registry::default())))
         .route("/", get(asset::handler))
         .route("/:asset", get(asset::handler))
@@ -53,11 +56,7 @@ async fn reserve_room(
     State(registry): State<Arc<Mutex<Registry>>>,
     Json(request): Json<ReserveRoom>,
 ) -> Result<impl IntoResponse, Error> {
-    let (id, name) = registry
-        .lock()
-        .await
-        .reserve(request.name.into_boxed_str())
-        .await?;
+    let (id, name) = registry.lock().await.reserve(&request.name).await?;
     Ok((
         StatusCode::CREATED,
         Json(json!({
@@ -102,16 +101,17 @@ struct JoinRoomQuery {
     name: String,
 }
 
-async fn participate_room(
+async fn join_room(
     State(registry): State<Arc<Mutex<Registry>>>,
     Path(id): Path<Ulid>,
     Query(JoinRoomQuery { name }): Query<JoinRoomQuery>,
     ws: WebSocketUpgrade,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| async move {
-        let _ = registry
-            .lock()
-            .await
-            .join_room(id, socket, name.into_boxed_str());
-    })
+    let name = utils::sanitize(&name).to_owned().into_boxed_str();
+    if name.len() < USERNAME_MIN_LEN {
+        return Err(Error::UsernameTooShort);
+    }
+    Ok(ws.on_upgrade(move |socket| async move {
+        let _ = registry.lock().await.join_room(id, socket, name);
+    }))
 }

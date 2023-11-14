@@ -10,6 +10,10 @@ pub enum Error {
     RoomNotFound,
     #[error("Room already exists")]
     RoomAlreadyExist,
+    #[error("Room name too short")]
+    RoomNameTooShort,
+    #[error("Username name too short")]
+    UsernameTooShort,
 }
 
 impl From<Error> for StatusCode {
@@ -17,6 +21,8 @@ impl From<Error> for StatusCode {
         match value {
             Error::RoomNotFound => StatusCode::NOT_FOUND,
             Error::RoomAlreadyExist => StatusCode::CONFLICT,
+            Error::RoomNameTooShort => StatusCode::BAD_REQUEST,
+            Error::UsernameTooShort => StatusCode::BAD_REQUEST,
         }
     }
 }

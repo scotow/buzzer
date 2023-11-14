@@ -9,6 +9,9 @@ use ulid::Ulid;
 
 use crate::error::Error;
 use crate::room::Room;
+use crate::utils;
+
+const ROOM_NAME_MIN_LEN: usize = 3;
 
 #[derive(Default)]
 pub struct Registry {
@@ -19,21 +22,25 @@ pub struct Registry {
 }
 
 impl Registry {
-    pub async fn reserve(&mut self, name: Box<str>) -> Result<(Ulid, Box<str>), Error> {
+    pub async fn reserve(&mut self, name: &str) -> Result<(Ulid, Box<str>), Error> {
         // TODO: cleanup unclaimed rooms after a while.
-        // TODO: sanitize room names.
 
-        if self.rooms_name_mapping.contains_key(&name)
-            || self.pending_rooms_name_mapping.contains_key(&name)
+        let search_sanitized = utils::sanitize_for_search(name);
+        if search_sanitized.len() < ROOM_NAME_MIN_LEN {
+            return Err(Error::RoomNameTooShort);
+        }
+
+        if self.rooms_name_mapping.contains_key(&search_sanitized)
+            || self
+                .pending_rooms_name_mapping
+                .contains_key(&search_sanitized)
         {
             return Err(Error::RoomAlreadyExist);
         }
 
         let id = Ulid::new();
-        assert!(self
-            .pending_rooms_name_mapping
-            .insert(name.clone(), id)
-            .is_none());
+        let name = utils::sanitize(name).to_owned().into_boxed_str();
+
         assert!(self
             .pending_rooms
             .insert(
@@ -43,6 +50,10 @@ impl Registry {
                     creation: Instant::now(),
                 },
             )
+            .is_none());
+        assert!(self
+            .pending_rooms_name_mapping
+            .insert(search_sanitized, id)
             .is_none());
 
         info!(id = as_display!(id), room = as_display!(name); "room reserved");
@@ -58,9 +69,16 @@ impl Registry {
         let Some(name) = self.pending_rooms.remove(&id).map(|r| r.name) else {
             return Err(Error::RoomNotFound);
         };
-        assert_eq!(self.pending_rooms_name_mapping.remove(&name), Some(id));
+        let search_sanitized = utils::sanitize_for_search(&name);
+        assert_eq!(
+            self.pending_rooms_name_mapping.remove(&search_sanitized),
+            Some(id)
+        );
 
-        assert!(self.rooms_name_mapping.insert(name.clone(), id).is_none());
+        assert!(self
+            .rooms_name_mapping
+            .insert(search_sanitized, id)
+            .is_none());
         info!(id = as_display!(id), room = as_display!(name); "room created");
         self.rooms
             .insert(id, Room::new(id, name, socket, weak_self));
@@ -70,15 +88,19 @@ impl Registry {
 
     pub fn remove(&mut self, id: Ulid, name: Box<str>) {
         assert!(self.rooms.remove(&id).is_some());
-        assert_eq!(self.rooms_name_mapping.remove(&name), Some(id));
+        assert_eq!(
+            self.rooms_name_mapping
+                .remove(&utils::sanitize_for_search(&name)),
+            Some(id)
+        );
         info!(id = as_display!(id), room = as_display!(name); "room removed");
     }
 
     pub fn find_room(&self, name: &str) -> Result<(Ulid, Box<str>), Error> {
         self.rooms_name_mapping
-            .get(name)
+            .get(&utils::sanitize_for_search(name))
             .copied()
-            .map(|id| (id, Box::from(name)))
+            .and_then(|id| self.rooms.get(&id).map(|r| (id, r.name.clone())))
             .ok_or(Error::RoomNotFound)
     }
 
