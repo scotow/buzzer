@@ -1,3 +1,4 @@
+use crate::error::Error;
 use crate::registry::Registry;
 use axum::extract::ws::WebSocket;
 use axum::extract::{Path, Query, State, WebSocketUpgrade};
@@ -13,6 +14,7 @@ use tower_http::set_header::SetResponseHeaderLayer;
 use ulid::Ulid;
 
 mod asset;
+mod error;
 mod packet;
 mod registry;
 mod room;
@@ -49,20 +51,19 @@ struct ReserveRoom {
 async fn reserve_room(
     State(registry): State<Arc<Mutex<Registry>>>,
     Json(request): Json<ReserveRoom>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, Error> {
     let (id, name) = registry
         .lock()
         .await
         .reserve(request.name.into_boxed_str())
-        .await
-        .unwrap();
-    (
+        .await?;
+    Ok((
         StatusCode::CREATED,
         Json(json!({
             "id": id,
             "name": name,
         })),
-    )
+    ))
 }
 
 async fn host_room(
@@ -72,7 +73,7 @@ async fn host_room(
 ) -> impl IntoResponse {
     ws.on_upgrade(move |socket| async move {
         let weak_registry = Arc::downgrade(&registry);
-        registry.lock().await.create(id, socket, weak_registry);
+        let _ = registry.lock().await.create(id, socket, weak_registry);
     })
 }
 
@@ -84,15 +85,15 @@ struct FindRoomByNameQuery {
 async fn find_room_by_name(
     State(registry): State<Arc<Mutex<Registry>>>,
     Query(FindRoomByNameQuery { name }): Query<FindRoomByNameQuery>,
-) -> impl IntoResponse {
-    let (id, name) = registry.lock().await.find_room(&name).unwrap();
-    (
+) -> Result<impl IntoResponse, Error> {
+    let (id, name) = registry.lock().await.find_room(&name)?;
+    Ok((
         StatusCode::OK,
         Json(json!({
             "id": id,
             "name": name,
         })),
-    )
+    ))
 }
 
 #[derive(Deserialize)]
@@ -107,7 +108,7 @@ async fn participate_room(
     ws: WebSocketUpgrade,
 ) -> impl IntoResponse {
     ws.on_upgrade(move |socket| async move {
-        registry
+        let _ = registry
             .lock()
             .await
             .join_room(id, socket, name.into_boxed_str());

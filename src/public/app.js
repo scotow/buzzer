@@ -32,15 +32,25 @@ document.querySelector('.lobby.panel .action').addEventListener('click', () => {
                     name: document.querySelector('.lobby.panel .room.input > input').value.trim(),
                 }),
             });
-            let { id, name } = await response.json();
-            // console.log(id, name);
+            let data = await response.json();
+            if (data.error) {
+                alert(`${data.error}.`);
+                return;
+            }
+            let { id, name } = data;
 
             run('host', name, new WebSocket(`ws://localhost:8080/rooms/${id}/host`), document.querySelector('.host.panel'));
         } else {
             const response = await fetch(`/rooms/id?name=${document.querySelector('.lobby.panel .room.input > input').value.trim()}`, {
                 method: 'GET',
             });
-            let { id, name } = await response.json();
+            let data = await response.json();
+            if (data.error) {
+                alert(`${data.error}.`);
+                return;
+            }
+            let { id, name } = data;
+
             run('participate', name, new WebSocket(`ws://localhost:8080/rooms/${id}/participate?name=${document.querySelector('.lobby.panel .username.input > input').value.trim()}`), document.querySelector('.participate.panel'));
         }
     })();
