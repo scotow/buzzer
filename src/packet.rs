@@ -1,6 +1,5 @@
 use axum::extract::ws::{Message as WsMessage, Message};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 
 #[derive(Serialize)]
 #[serde(tag = "event", rename_all(serialize = "camelCase"))]

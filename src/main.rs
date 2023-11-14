@@ -1,6 +1,5 @@
-use crate::error::Error;
-use crate::registry::Registry;
-use axum::extract::ws::WebSocket;
+use std::sync::Arc;
+
 use axum::extract::{Path, Query, State, WebSocketUpgrade};
 use axum::http::{header, HeaderValue, StatusCode};
 use axum::response::IntoResponse;
@@ -8,10 +7,12 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::Deserialize;
 use serde_json::json;
-use std::sync::Arc;
 use tokio::sync::Mutex;
 use tower_http::set_header::SetResponseHeaderLayer;
 use ulid::Ulid;
+
+use crate::error::Error;
+use crate::registry::Registry;
 
 mod asset;
 mod error;

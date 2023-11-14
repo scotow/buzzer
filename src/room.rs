@@ -1,20 +1,15 @@
-use crate::packet::PacketOut;
-use crate::registry::Registry;
-use axum::extract::ws::{Message as WsMessage, Message, WebSocket};
-use axum::Error;
-use futures::stream::SplitSink;
-use futures::{SinkExt, StreamExt};
-use serde::Deserialize;
-use serde_json::json;
-use std::collections::HashSet;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
 use std::time::Instant;
-use tokio::sync::broadcast::error::RecvError;
+
+use axum::extract::ws::{Message as WsMessage, WebSocket};
+use futures::{SinkExt, StreamExt};
 use tokio::sync::broadcast::Sender as BroadcastSender;
 use tokio::sync::mpsc::Sender as MpscSender;
 use tokio::sync::{broadcast, mpsc, Mutex};
 use ulid::Ulid;
+
+use crate::packet::PacketOut;
+use crate::registry::Registry;
 
 const CHANNEL_SIZE: usize = 1024;
 
@@ -92,7 +87,7 @@ impl Room {
             }
         });
 
-        let mut self_main_tx = main_tx.clone();
+        let self_main_tx = main_tx.clone();
         tokio::spawn(async move {
             loop {
                 match host_rx.next().await {
@@ -128,7 +123,7 @@ impl Room {
         });
 
         let (mut tx, mut rx) = socket.split();
-        let mut main_tx = self.main.clone();
+        let main_tx = self.main.clone();
         let mut broadcast_rx = self.broadcast.subscribe();
 
         // TODO: if either loop breaks, end the other.
@@ -216,7 +211,7 @@ struct Participant {
 }
 
 #[derive(Clone)]
-pub enum RoomMessage {
+enum RoomMessage {
     ParticipantJoin,
     Buzzed(Arc<Participant>, Instant),
     Clear,

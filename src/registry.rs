@@ -1,12 +1,14 @@
-use crate::error::Error;
-use crate::room::Room;
+use std::collections::HashMap;
+use std::sync::Weak;
+use std::time::Instant;
+
 use axum::extract::ws::WebSocket;
 use log::{as_display, info};
-use std::collections::HashMap;
-use std::sync::{Arc, Weak};
-use std::time::Instant;
 use tokio::sync::Mutex;
 use ulid::Ulid;
+
+use crate::error::Error;
+use crate::room::Room;
 
 #[derive(Default)]
 pub struct Registry {
