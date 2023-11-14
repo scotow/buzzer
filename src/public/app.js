@@ -1,10 +1,3 @@
-// let shiftOffset = 72 / 2; // Placeholder.
-// document.addEventListener('DOMContentLoaded', () => {
-//     setTimeout(() => {
-//         shiftOffset = (document.querySelector('#lobby .input.username').clientHeight + 14) / 2;
-//     }, 250);
-// });
-
 document.querySelectorAll('.lobby.panel .mode').forEach((elem) => {
      elem.addEventListener('click', () => {
          if (elem.classList.contains('selected')) {
@@ -15,12 +8,24 @@ document.querySelectorAll('.lobby.panel .mode').forEach((elem) => {
          elem.classList.add('selected');
          document.querySelector('.lobby.panel .input.username').style.display = elem.classList.contains('host') ? 'none' : 'block';
          document.querySelector('.lobby.panel .action').innerText = `${elem.classList.contains('host') ? 'Create' : 'Join'} room`;
-         // document.querySelector('#lobby > .panel').style.transform = `translate(-50%, calc(-50% - ${(elem.classList.contains('host') ? shiftOffset : 0) + 'px'}))`;
+         if (elem.classList.contains('host')) {
+             if (document.querySelector('.lobby.panel .input.room > input').value.trim().length === 0) {
+                 document.querySelector('.lobby.panel .input.room > input').value = `Room ${1000 + Math.floor(Math.random() * 9000)}`;
+                 document.querySelector('.lobby.panel .input.room > input').focus();
+                 document.querySelector('.lobby.panel .input.room > input').select();
+             }
+         } else {
+             if (/Room \d{4}/.test(document.querySelector('.lobby.panel .input.room > input').value.trim())) {
+                 document.querySelector('.lobby.panel .input.room > input').value = '';
+                 document.querySelector('.lobby.panel .input.room > input').focus();
+             }
+         }
      })
 });
 
-// TODO: replace with submit event handling.
-document.querySelector('.lobby.panel .action').addEventListener('click', () => {
+function proceed(event) {
+    event.preventDefault();
+
     (async function() {
         if (document.querySelector('.lobby.panel .mode.selected').classList.contains('host')) {
             const response = await fetch("/rooms", {
@@ -54,7 +59,10 @@ document.querySelector('.lobby.panel .action').addEventListener('click', () => {
             run('participate', name, new WebSocket(`ws://localhost:8080/rooms/${id}/participate?name=${document.querySelector('.lobby.panel .username.input > input').value.trim()}`), document.querySelector('.participate.panel'));
         }
     })();
-});
+}
+
+document.querySelector('.lobby.panel .action').addEventListener('click', proceed);
+document.querySelector('.lobby.panel form').addEventListener('submit', proceed);
 
 function run(mode, name, socket, panelElem) {
     document.body.classList.replace('lobby', mode);
