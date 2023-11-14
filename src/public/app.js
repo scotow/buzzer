@@ -23,6 +23,15 @@ document.querySelectorAll('.lobby.panel .mode').forEach((elem) => {
      })
 });
 
+if (localStorage.getItem('username') !== null) {
+    document.querySelector('.lobby.panel .input.username > input').value = localStorage.getItem('username');
+}
+document.querySelector('.lobby.panel .input.username > input').addEventListener('change', (event) => {
+    localStorage.setItem('username', event.target.value.trim());
+});
+document.querySelector('.lobby.panel .input.room > input').focus();
+document.querySelector('.lobby.panel .input.room > input').select();
+
 function proceed(event) {
     event.preventDefault();
 
