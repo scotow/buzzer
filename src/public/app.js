@@ -53,7 +53,7 @@ function proceed(event) {
             }
             let { id, name } = data;
 
-            run('host', name, new WebSocket(`ws://localhost:8080/rooms/${id}/host`), document.querySelector('.host.panel'));
+            run('host', name, new WebSocket(`${location.origin.replace(/^http/, 'ws')}/rooms/${id}/host`), document.querySelector('.host.panel'));
         } else {
             const response = await fetch(`/rooms/id?name=${document.querySelector('.lobby.panel .room.input > input').value.trim()}`, {
                 method: 'GET',
@@ -65,7 +65,7 @@ function proceed(event) {
             }
             let { id, name } = data;
 
-            run('participate', name, new WebSocket(`ws://localhost:8080/rooms/${id}/participate?name=${document.querySelector('.lobby.panel .username.input > input').value.trim()}`), document.querySelector('.participate.panel'));
+            run('participate', name, new WebSocket(`${location.origin.replace(/^http/, 'ws')}/rooms/${id}/participate?name=${document.querySelector('.lobby.panel .username.input > input').value.trim()}`), document.querySelector('.participate.panel'));
         }
     })();
 }
