@@ -77,7 +77,6 @@ function run(mode, name, socket, panelElem) {
     document.body.classList.replace('lobby', mode);
     panelElem.querySelector('.title.panel > .labels > .label').innerText = name;
 
-    let buzzTimeout = null;
     let buzz = 0;
     let initiatedLeave = false;
 
@@ -181,13 +180,17 @@ function run(mode, name, socket, panelElem) {
             case 'participate':
                 if (event.key === ' ') {
                     handleBuzz();
-                    if (buzzTimeout !== null) {
-                        clearTimeout(buzzTimeout);
-                    }
                     panelElem.querySelector('.buzzer').classList.add('buzzing');
-                    buzzTimeout = setTimeout(() => {
-                        panelElem.querySelector('.buzzer').classList.remove('buzzing');
-                    }, 200);
+                }
+                break;
+        }
+    }
+
+    function keyUp(event) {
+        switch (mode) {
+            case 'participate':
+                if (event.key === ' ') {
+                    panelElem.querySelector('.buzzer').classList.remove('buzzing');
                 }
                 break;
         }
@@ -201,10 +204,12 @@ function run(mode, name, socket, panelElem) {
         panelElem.querySelector('.leave.action')?.removeEventListener('click', handleLeave);
         panelElem.querySelector('.clear.action')?.removeEventListener('click', handleClear);
         window.removeEventListener('keydown', keyDown);
+        window.removeEventListener('keyup', keyUp);
     }
 
     panelElem.querySelector('.buzzer')?.addEventListener('click', handleBuzz);
     panelElem.querySelector('.leave.action')?.addEventListener('click', handleLeave);
     panelElem.querySelector('.clear.action')?.addEventListener('click', handleClear);
     window.addEventListener('keydown', keyDown);
+    window.addEventListener('keyup', keyUp);
 }
