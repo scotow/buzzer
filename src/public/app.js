@@ -96,6 +96,7 @@ function run(mode, name, socket, panelElem) {
                 const usernameElem = document.createElement('div');
                 usernameElem.classList.add('username', 'selectable');
                 usernameElem.innerText = data.name;
+                usernameElem.title = data.name;
                 buzzElem.append(usernameElem);
 
                 const rightElem = document.createElement('div');

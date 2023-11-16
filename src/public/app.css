@@ -249,6 +249,7 @@ body.participate > .participate.panel {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 20px;
     height: 58px;
     margin-bottom: 8px;
     padding: 0 14px;
@@ -269,6 +270,8 @@ body.participate > .participate.panel {
 
 .host.panel .buzz > .username {
     font-size: 26px;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .host.panel .buzz > .right {
