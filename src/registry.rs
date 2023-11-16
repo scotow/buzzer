@@ -1,10 +1,12 @@
 use std::collections::HashMap;
 use std::sync::Weak;
-use std::time::Instant;
+use std::time::Duration;
 
 use axum::extract::ws::WebSocket;
-use log::{as_display, info};
+use log::{as_display, info, warn};
 use tokio::sync::Mutex;
+use tokio::task::JoinHandle;
+use tokio::time;
 use ulid::Ulid;
 
 use crate::error::Error;
@@ -12,6 +14,7 @@ use crate::room::Room;
 use crate::utils;
 
 const ROOM_NAME_MIN_LEN: usize = 3;
+const RESERVATION_TIMEOUT: Duration = Duration::from_secs(15);
 
 #[derive(Default)]
 pub struct Registry {
@@ -22,9 +25,11 @@ pub struct Registry {
 }
 
 impl Registry {
-    pub async fn reserve(&mut self, name: &str) -> Result<(Ulid, Box<str>), Error> {
-        // TODO: cleanup unclaimed rooms after a while.
-
+    pub async fn reserve(
+        &mut self,
+        name: &str,
+        weak_self: Weak<Mutex<Self>>,
+    ) -> Result<(Ulid, Box<str>), Error> {
         let search_sanitized = utils::sanitize_for_search(name);
         if search_sanitized.len() < ROOM_NAME_MIN_LEN {
             return Err(Error::RoomNameTooShort);
@@ -43,13 +48,7 @@ impl Registry {
 
         assert!(self
             .pending_rooms
-            .insert(
-                id,
-                PendingRoom {
-                    name: name.clone(),
-                    creation: Instant::now(),
-                },
-            )
+            .insert(id, PendingRoom::new(id, name.clone(), weak_self),)
             .is_none());
         assert!(self
             .pending_rooms_name_mapping
@@ -66,10 +65,12 @@ impl Registry {
         socket: WebSocket,
         weak_self: Weak<Mutex<Self>>,
     ) -> Result<(), Error> {
-        let Some(name) = self.pending_rooms.remove(&id).map(|r| r.name) else {
+        let Some(pending_room) = self.pending_rooms.remove(&id) else {
             return Err(Error::RoomNotFound);
         };
-        let search_sanitized = utils::sanitize_for_search(&name);
+        pending_room.cleanup.abort();
+
+        let search_sanitized = utils::sanitize_for_search(&pending_room.name);
         assert_eq!(
             self.pending_rooms_name_mapping.remove(&search_sanitized),
             Some(id)
@@ -79,9 +80,9 @@ impl Registry {
             .rooms_name_mapping
             .insert(search_sanitized, id)
             .is_none());
-        info!(id = as_display!(id), room = as_display!(name); "room created");
+        info!(id = as_display!(id), room = as_display!(pending_room.name); "room created");
         self.rooms
-            .insert(id, Room::new(id, name, socket, weak_self));
+            .insert(id, Room::new(id, pending_room.name, socket, weak_self));
 
         Ok(())
     }
@@ -115,5 +116,38 @@ impl Registry {
 
 struct PendingRoom {
     name: Box<str>,
-    creation: Instant,
+    cleanup: JoinHandle<()>,
+}
+
+impl PendingRoom {
+    fn new(id: Ulid, name: Box<str>, weak_self: Weak<Mutex<Registry>>) -> Self {
+        let name_ref = name.clone();
+        let cleanup_fut = tokio::spawn(async move {
+            time::sleep(RESERVATION_TIMEOUT).await;
+
+            let Some(registry) = weak_self.upgrade() else {
+                return;
+            };
+            let mut registry_lock = registry.lock().await;
+
+            let Some(name) = registry_lock.pending_rooms.remove(&id).map(|r| r.name) else {
+                warn!(id = as_display!(id), room = as_display!(name_ref); "room not found for cleanup");
+                return;
+            };
+            let search_sanitized = utils::sanitize_for_search(&name);
+            assert_eq!(
+                registry_lock
+                    .pending_rooms_name_mapping
+                    .remove(&search_sanitized),
+                Some(id)
+            );
+
+            info!(id = as_display!(id), room = as_display!(name_ref); "room reservation expired");
+        });
+
+        Self {
+            name,
+            cleanup: cleanup_fut,
+        }
+    }
 }

@@ -56,7 +56,12 @@ async fn reserve_room(
     State(registry): State<Arc<Mutex<Registry>>>,
     Json(request): Json<ReserveRoom>,
 ) -> Result<impl IntoResponse, Error> {
-    let (id, name) = registry.lock().await.reserve(&request.name).await?;
+    let weak_registry = Arc::downgrade(&registry);
+    let (id, name) = registry
+        .lock()
+        .await
+        .reserve(&request.name, weak_registry)
+        .await?;
     Ok((
         StatusCode::CREATED,
         Json(json!({
