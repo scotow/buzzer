@@ -8,7 +8,7 @@ use tokio::sync::mpsc::Sender as MpscSender;
 use tokio::sync::{broadcast, mpsc, Mutex};
 use ulid::Ulid;
 
-use crate::packet::PacketOut;
+use crate::packet::{PacketIn, PacketOut};
 use crate::registry::Registry;
 
 const CHANNEL_SIZE: usize = 1024;
@@ -17,7 +17,7 @@ const CHANNEL_SIZE: usize = 1024;
 pub struct Room {
     pub name: Box<str>,
     main: MpscSender<RoomMessage>,
-    broadcast: BroadcastSender<WsMessage>,
+    broadcast: BroadcastSender<BroadcastMessage>,
 }
 
 impl Room {
@@ -42,7 +42,9 @@ impl Room {
                             count: participants_count,
                         });
                         host_tx.send(packet.clone()).await.expect("send failed");
-                        self_broadcast_tx.send(packet).expect("send failed");
+                        self_broadcast_tx
+                            .send(BroadcastMessage::All(packet))
+                            .expect("send failed");
                     }
                     RoomMessage::Buzzed(buzzer, timestamp) => {
                         let timestamp_diff = match run.buzz(buzzer.id, timestamp) {
@@ -60,6 +62,32 @@ impl Room {
                             )
                             .await
                             .expect("send failed");
+                        // TODO: cleanup.
+                        if timestamp_diff.is_none() {
+                            self_broadcast_tx
+                                .send(BroadcastMessage::Single(
+                                    run.buzzed[0].0,
+                                    WsMessage::from(PacketOut::Select),
+                                ))
+                                .expect("send failed");
+                        }
+                    }
+                    RoomMessage::SelectNext => {
+                        let Some((to_clear, to_notify)) = run.select_next() else {
+                            continue;
+                        };
+                        self_broadcast_tx
+                            .send(BroadcastMessage::Single(
+                                to_clear,
+                                WsMessage::from(PacketOut::Deselect),
+                            ))
+                            .expect("send failed");
+                        self_broadcast_tx
+                            .send(BroadcastMessage::Single(
+                                to_notify,
+                                WsMessage::from(PacketOut::Select),
+                            ))
+                            .expect("send failed");
                     }
                     RoomMessage::Clear => {
                         run = Run::new();
@@ -71,7 +99,9 @@ impl Room {
                         });
                         host_tx.send(packet.clone()).await.expect("send failed");
                         if participants_count > 0 {
-                            self_broadcast_tx.send(packet).expect("send failed");
+                            self_broadcast_tx
+                                .send(BroadcastMessage::All(packet))
+                                .expect("send failed");
                         }
                     }
                     RoomMessage::HostLeft => {
@@ -82,7 +112,8 @@ impl Room {
                             .await
                             .remove(id, self_name);
                         // If the host was alone, the broadcast channel is already partially closed.
-                        _ = self_broadcast_tx.send(WsMessage::from(PacketOut::HostLeft));
+                        _ = self_broadcast_tx
+                            .send(BroadcastMessage::All(WsMessage::from(PacketOut::HostLeft)));
                         return;
                     }
                 }
@@ -93,14 +124,28 @@ impl Room {
         tokio::spawn(async move {
             loop {
                 match host_rx.next().await {
-                    Some(Ok(WsMessage::Text(_))) => {
-                        // TODO: parse message and ensure it's a clear.
-                        self_main_tx
-                            .send(RoomMessage::Clear)
-                            .await
-                            .expect("send failed");
-                    }
-                    Some(Ok(WsMessage::Close(_))) | Some(Ok(_)) | Some(Err(_)) | None => {
+                    Some(Ok(msg)) => match PacketIn::try_from(msg) {
+                        Ok(PacketIn::Clear) => {
+                            self_main_tx
+                                .send(RoomMessage::Clear)
+                                .await
+                                .expect("send failed");
+                        }
+                        Ok(PacketIn::SelectNext) => {
+                            self_main_tx
+                                .send(RoomMessage::SelectNext)
+                                .await
+                                .expect("send failed");
+                        }
+                        Ok(_) | Err(_) => {
+                            self_main_tx
+                                .send(RoomMessage::HostLeft)
+                                .await
+                                .expect("send failed");
+                            return;
+                        }
+                    },
+                    Some(Err(_)) | None => {
                         // TODO: log error.
                         self_main_tx
                             .send(RoomMessage::HostLeft)
@@ -120,10 +165,8 @@ impl Room {
     }
 
     pub fn join(&self, socket: WebSocket, name: Box<str>) {
-        let participant = Arc::new(Participant {
-            id: Ulid::new(),
-            name,
-        });
+        let id = Ulid::new();
+        let participant = Arc::new(Participant { id, name });
 
         let (mut tx, mut rx) = socket.split();
         let main_tx = self.main.clone();
@@ -134,9 +177,9 @@ impl Room {
             loop {
                 match broadcast_rx.recv().await {
                     Ok(msg) => {
-                        if tx.send(msg).await.is_err() {
+                        if msg.is_target(&id) && tx.send(msg.inner()).await.is_err() {
                             return;
-                        };
+                        }
                     }
                     Err(_err) => {
                         // TODO: send "connection lost / room closed" error.
@@ -180,11 +223,15 @@ impl Room {
 
 struct Run {
     buzzed: Vec<(Ulid, Instant)>,
+    selection: usize,
 }
 
 impl Run {
     fn new() -> Self {
-        Self { buzzed: Vec::new() }
+        Self {
+            buzzed: Vec::new(),
+            selection: 0,
+        }
     }
 
     fn buzz(&mut self, buzzer: Ulid, time: Instant) -> BuzzResult {
@@ -199,6 +246,17 @@ impl Run {
         };
         self.buzzed.push((buzzer, time));
         res
+    }
+
+    fn select_next(&mut self) -> Option<(Ulid, Ulid)> {
+        if self.selection == self.buzzed.len() {
+            return None;
+        }
+        self.selection += 1;
+        Some((
+            self.buzzed[self.selection - 1].0,
+            self.buzzed[self.selection].0,
+        ))
     }
 }
 
@@ -217,7 +275,30 @@ struct Participant {
 enum RoomMessage {
     ParticipantJoin,
     Buzzed(Arc<Participant>, Instant),
+    SelectNext,
     Clear,
     ParticipantLeft,
     HostLeft,
+}
+
+#[derive(Clone, Debug)]
+enum BroadcastMessage {
+    All(WsMessage),
+    Single(Ulid, WsMessage),
+}
+
+impl BroadcastMessage {
+    fn is_target(&self, id: &Ulid) -> bool {
+        match self {
+            BroadcastMessage::All(_) => true,
+            BroadcastMessage::Single(target_id, _) => target_id == id,
+        }
+    }
+
+    fn inner(self) -> WsMessage {
+        match self {
+            BroadcastMessage::All(msg) => msg,
+            BroadcastMessage::Single(_, msg) => msg,
+        }
+    }
 }

@@ -308,6 +308,14 @@ body.participate > .participate.panel {
     height: 500px;
 }
 
+.participate.panel .inner.panel.selected {
+    background-color: #125116;
+}
+
+.participate.panel .inner.panel.waiting {
+    background-color: #b37137;
+}
+
 .buzzer {
     width: 200px;
     height: 200px;

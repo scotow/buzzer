@@ -77,6 +77,7 @@ function run(mode, name, socket, panelElem) {
     document.body.classList.replace('lobby', mode);
     panelElem.querySelector('.title.panel > .labels > .label').innerText = name;
 
+    // let buzzed
     let buzz = 0;
     let initiatedLeave = false;
 
@@ -135,6 +136,12 @@ function run(mode, name, socket, panelElem) {
 
                 panelElem.querySelector('.inner.panel').append(buzzElem);
                 break;
+            case 'select':
+                panelElem.querySelector('.inner.panel').classList.add('selected');
+                break;
+            case 'deselect':
+                panelElem.querySelector('.inner.panel').classList.remove('selected');
+                break;
             case 'hostLeft':
                 exit();
                 alert('The host has closed the room.');
@@ -164,6 +171,10 @@ function run(mode, name, socket, panelElem) {
         socket.send(JSON.stringify({ event: 'clear' }));
         buzz = 0;
         panelElem.querySelector('.inner.panel').replaceChildren();
+    }
+
+    function handleSelect() {
+        socket.send(JSON.stringify({ event: 'selectNext' }));
     }
 
     function keyDown(event) {
@@ -203,6 +214,7 @@ function run(mode, name, socket, panelElem) {
         panelElem.querySelector('.buzzer')?.removeEventListener('click', handleBuzz);
         panelElem.querySelector('.leave.action')?.removeEventListener('click', handleLeave);
         panelElem.querySelector('.clear.action')?.removeEventListener('click', handleClear);
+        panelElem.querySelector('.select.action')?.removeEventListener('click', handleSelect);
         window.removeEventListener('keydown', keyDown);
         window.removeEventListener('keyup', keyUp);
     }
@@ -210,6 +222,7 @@ function run(mode, name, socket, panelElem) {
     panelElem.querySelector('.buzzer')?.addEventListener('click', handleBuzz);
     panelElem.querySelector('.leave.action')?.addEventListener('click', handleLeave);
     panelElem.querySelector('.clear.action')?.addEventListener('click', handleClear);
+    panelElem.querySelector('.select.action')?.addEventListener('click', handleSelect);
     window.addEventListener('keydown', keyDown);
     window.addEventListener('keyup', keyUp);
 }

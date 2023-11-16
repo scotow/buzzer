@@ -2,16 +2,18 @@ use axum::extract::ws::{Message as WsMessage, Message};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize)]
-#[serde(tag = "event", rename_all(serialize = "camelCase"))]
+#[serde(tag = "event", rename_all = "camelCase")]
 pub enum PacketOut {
     ParticipantCount {
         count: usize,
     },
-    #[serde(rename_all(serialize = "camelCase"))]
+    #[serde(rename_all = "camelCase")]
     Buzzed {
         name: Box<str>,
         timestamp_diff: Option<u64>,
     },
+    Select,
+    Deselect,
     HostLeft,
 }
 
@@ -21,10 +23,11 @@ impl From<PacketOut> for WsMessage {
     }
 }
 
-#[derive(Deserialize)]
-#[serde(tag = "event", rename_all(serialize = "camelCase"))]
+#[derive(Deserialize, Debug)]
+#[serde(tag = "event", rename_all = "camelCase")]
 pub enum PacketIn {
     Buzz,
+    SelectNext,
     Clear,
 }
 
@@ -33,7 +36,7 @@ impl TryFrom<WsMessage> for PacketIn {
 
     fn try_from(value: WsMessage) -> Result<Self, Self::Error> {
         match value {
-            Message::Text(text) => serde_json::from_str(&text).map_err(|_err| ())?,
+            Message::Text(text) => serde_json::from_str(&text).map_err(|_err| ()),
             _ => Err(()),
         }
     }
