@@ -42,12 +42,11 @@ impl Room {
                             count: participants_count,
                         });
                         host_tx.send(packet.clone()).await.expect("send failed");
-                        self_broadcast_tx
-                            .send(BroadcastMessage::All(packet))
-                            .expect("send failed");
+                        _ = self_broadcast_tx.send(BroadcastMessage::All(packet));
                     }
                     RoomMessage::Buzzed(buzzer, timestamp) => {
-                        let timestamp_diff = match run.buzz(buzzer.id, timestamp) {
+                        let buzz_result = run.buzz(buzzer.id, timestamp);
+                        let timestamp_diff = match buzz_result {
                             BuzzResult::Already => continue,
                             BuzzResult::First => None,
                             BuzzResult::TimeDifference(diff) => Some(diff),
@@ -62,35 +61,30 @@ impl Room {
                             )
                             .await
                             .expect("send failed");
-                        // TODO: cleanup.
-                        if timestamp_diff.is_none() {
-                            self_broadcast_tx
-                                .send(BroadcastMessage::Single(
-                                    run.buzzed[0].0,
-                                    WsMessage::from(PacketOut::Select),
-                                ))
-                                .expect("send failed");
+                        if matches!(buzz_result, BuzzResult::First) {
+                            _ = self_broadcast_tx.send(BroadcastMessage::Single(
+                                run.first_unchecked(),
+                                WsMessage::from(PacketOut::Select),
+                            ));
                         }
                     }
                     RoomMessage::SelectNext => {
                         let Some((to_clear, to_notify)) = run.select_next() else {
                             continue;
                         };
-                        self_broadcast_tx
-                            .send(BroadcastMessage::Single(
-                                to_clear,
-                                WsMessage::from(PacketOut::Deselect),
-                            ))
-                            .expect("send failed");
-                        self_broadcast_tx
-                            .send(BroadcastMessage::Single(
-                                to_notify,
-                                WsMessage::from(PacketOut::Select),
-                            ))
-                            .expect("send failed");
+                        _ = self_broadcast_tx.send(BroadcastMessage::Single(
+                            to_clear,
+                            WsMessage::from(PacketOut::Deselect),
+                        ));
+                        _ = self_broadcast_tx.send(BroadcastMessage::Single(
+                            to_notify,
+                            WsMessage::from(PacketOut::Select),
+                        ));
                     }
                     RoomMessage::Clear => {
                         run = Run::new();
+                        _ = self_broadcast_tx
+                            .send(BroadcastMessage::All(WsMessage::from(PacketOut::Clear)));
                     }
                     RoomMessage::ParticipantLeft => {
                         participants_count -= 1;
@@ -98,11 +92,7 @@ impl Room {
                             count: participants_count,
                         });
                         host_tx.send(packet.clone()).await.expect("send failed");
-                        if participants_count > 0 {
-                            self_broadcast_tx
-                                .send(BroadcastMessage::All(packet))
-                                .expect("send failed");
-                        }
+                        _ = self_broadcast_tx.send(BroadcastMessage::All(packet));
                     }
                     RoomMessage::HostLeft => {
                         registry
@@ -221,6 +211,7 @@ impl Room {
     }
 }
 
+#[derive(Debug)]
 struct Run {
     buzzed: Vec<(Ulid, Instant)>,
     selection: usize,
@@ -249,7 +240,7 @@ impl Run {
     }
 
     fn select_next(&mut self) -> Option<(Ulid, Ulid)> {
-        if self.selection == self.buzzed.len() {
+        if self.buzzed.len() < 2 || self.selection == self.buzzed.len() - 1 {
             return None;
         }
         self.selection += 1;
@@ -257,6 +248,11 @@ impl Run {
             self.buzzed[self.selection - 1].0,
             self.buzzed[self.selection].0,
         ))
+    }
+
+    fn first_unchecked(&self) -> Ulid {
+        assert_eq!(self.buzzed.len(), 1);
+        self.buzzed[0].0
     }
 }
 

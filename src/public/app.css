@@ -293,6 +293,11 @@ body.participate > .participate.panel {
 
 .host.panel .footer.panel .clear.action {
     border-left: 1px solid #202020;
+    border-right: 1px solid #202020;
+}
+
+.host.panel .footer.panel .select.action {
+    border-left: 1px solid #202020;
 }
 
 /* Participating */
@@ -302,18 +307,32 @@ body.participate > .participate.panel {
 
 .participate.panel .inner.panel {
     flex: initial;
+    position: relative;
     display: flex;
     justify-content: center;
     align-items: center;
     height: 500px;
 }
 
-.participate.panel .inner.panel.selected {
-    background-color: #125116;
+.participate.panel .inner.panel::before {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    padding: 2px 4px;
+    font-size: 12px;
+    font-weight: bold;
+    border-radius: 4px;
+    transform: translateX(-50%);
 }
 
-.participate.panel .inner.panel.waiting {
-    background-color: #b37137;
+.participate.panel .inner.panel.selected::before {
+    content: 'Selected';
+    background-color: #28a745;
+}
+
+.participate.panel .inner.panel.waiting::before {
+    content: 'Waiting';
+    background-color: #ffa807;
 }
 
 .buzzer {
@@ -323,7 +342,7 @@ body.participate > .participate.panel {
     border-radius: 50%;
     /*box-shadow: 0px -12px #803030 inset;*/
     /*box-shadow:  1px 6px #803030;*/
-    box-shadow:  0px 12px #803030;
+    box-shadow: 0 12px #803030;
     cursor: pointer;
     transition: box-shadow 125ms, transform 125ms;
 }

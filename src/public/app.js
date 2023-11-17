@@ -77,8 +77,8 @@ function run(mode, name, socket, panelElem) {
     document.body.classList.replace('lobby', mode);
     panelElem.querySelector('.title.panel > .labels > .label').innerText = name;
 
-    // let buzzed
     let buzz = 0;
+    let buzzed = false;
     let initiatedLeave = false;
 
     socket.addEventListener('message', (message) => {
@@ -137,10 +137,15 @@ function run(mode, name, socket, panelElem) {
                 panelElem.querySelector('.inner.panel').append(buzzElem);
                 break;
             case 'select':
+                panelElem.querySelector('.inner.panel').classList.remove('waiting');
                 panelElem.querySelector('.inner.panel').classList.add('selected');
                 break;
             case 'deselect':
                 panelElem.querySelector('.inner.panel').classList.remove('selected');
+                break;
+            case 'clear':
+                panelElem.querySelector('.inner.panel').classList.remove('selected', 'waiting');
+                buzzed = false;
                 break;
             case 'hostLeft':
                 exit();
@@ -158,6 +163,10 @@ function run(mode, name, socket, panelElem) {
 
     function handleBuzz() {
         socket.send(JSON.stringify({ event: 'buzz' }));
+        if (!buzzed) {
+            buzzed = true;
+            panelElem.querySelector('.inner.panel').classList.add('waiting');
+        }
     }
 
     function handleLeave() {
@@ -211,6 +220,7 @@ function run(mode, name, socket, panelElem) {
         socket.close();
         document.body.classList.replace(mode, 'lobby');
         panelElem.querySelectorAll('.inner.panel .buzz').forEach((elem) => elem.remove());
+        panelElem.querySelector('.inner.panel').classList.remove('selected', 'waiting');
         panelElem.querySelector('.buzzer')?.removeEventListener('click', handleBuzz);
         panelElem.querySelector('.leave.action')?.removeEventListener('click', handleLeave);
         panelElem.querySelector('.clear.action')?.removeEventListener('click', handleClear);

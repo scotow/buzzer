@@ -14,6 +14,7 @@ pub enum PacketOut {
     },
     Select,
     Deselect,
+    Clear,
     HostLeft,
 }
 
