@@ -77,7 +77,7 @@ function run(mode, name, socket, panelElem) {
     document.body.classList.replace('lobby', mode);
     panelElem.querySelector('.title.panel > .labels > .label').innerText = name;
 
-    let buzz = 0;
+    let buzzs = [];
     let buzzed = false;
     let initiatedLeave = false;
 
@@ -88,15 +88,18 @@ function run(mode, name, socket, panelElem) {
                 panelElem.querySelector('.title.panel > .labels > .sub-label').innerText = `${data.count} participant${data.count !== 1 ? 's' : ''}`;
                 break;
             case 'buzzed':
-                buzz += 1;
+                const { id, name, timestampDiff } = data;
 
                 const buzzElem = document.createElement('div');
                 buzzElem.classList.add('buzz');
+                if (buzzs.length === 0) {
+                    buzzElem.classList.add('selected');
+                }
 
                 const usernameElem = document.createElement('div');
                 usernameElem.classList.add('username', 'selectable');
-                usernameElem.innerText = data.name;
-                usernameElem.title = data.name;
+                usernameElem.innerText = name;
+                usernameElem.title = name;
                 buzzElem.append(usernameElem);
 
                 const rightElem = document.createElement('div');
@@ -105,7 +108,7 @@ function run(mode, name, socket, panelElem) {
 
                 const positionElem = document.createElement('div');
                 positionElem.classList.add('position');
-                switch (buzz) {
+                switch (buzzs.length + 1) {
                     case 1:
                         positionElem.innerText = '1st';
                         break;
@@ -116,29 +119,38 @@ function run(mode, name, socket, panelElem) {
                         positionElem.innerText = '3rd';
                         break;
                     default:
-                        positionElem.innerText = `${buzz}th`;
+                        positionElem.innerText = `${buzzs.length + 1}th`;
                         break;
                 }
                 rightElem.append(positionElem);
 
-                if (data.timestampDiff !== null) {
+                if (timestampDiff !== null) {
                     const timestampElem = document.createElement('div');
                     timestampElem.classList.add('timestamp');
-                    if (data.timestampDiff < 1000) {
-                        timestampElem.innerText = `+${data.timestampDiff}ms`;
-                    } else if (data.timestampDiff < 10000) {
-                        timestampElem.innerText = `+${Math.floor(data.timestampDiff / 100) / 10}s`;
+                    if (timestampDiff < 1000) {
+                        timestampElem.innerText = `+${timestampDiff}ms`;
+                    } else if (timestampDiff < 10000) {
+                        timestampElem.innerText = `+${Math.floor(timestampDiff / 100) / 10}s`;
                     } else {
-                        timestampElem.innerText = `+${Math.floor(data.timestampDiff / 1000)}s`;
+                        timestampElem.innerText = `+${Math.floor(timestampDiff / 1000)}s`;
                     }
                     rightElem.append(timestampElem);
                 }
 
                 panelElem.querySelector('.inner.panel').append(buzzElem);
+                buzzs.push({ id, elem: buzzElem });
                 break;
             case 'select':
-                panelElem.querySelector('.inner.panel').classList.remove('waiting');
-                panelElem.querySelector('.inner.panel').classList.add('selected');
+                switch (mode) {
+                    case 'host':
+                        panelElem.querySelector('.inner.panel .buzz.selected').classList.remove('selected');
+                        buzzs.find((b) => b.id === data.id)?.elem.classList.add('selected');
+                        break;
+                    case 'participate':
+                        panelElem.querySelector('.inner.panel').classList.remove('waiting');
+                        panelElem.querySelector('.inner.panel').classList.add('selected');
+                        break;
+                }
                 break;
             case 'deselect':
                 panelElem.querySelector('.inner.panel').classList.remove('selected');
@@ -178,7 +190,7 @@ function run(mode, name, socket, panelElem) {
 
     function handleClear() {
         socket.send(JSON.stringify({ event: 'clear' }));
-        buzz = 0;
+        buzzs = [];
         panelElem.querySelector('.inner.panel').replaceChildren();
     }
 

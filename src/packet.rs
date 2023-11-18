@@ -1,5 +1,6 @@
 use axum::extract::ws::{Message as WsMessage, Message};
 use serde::{Deserialize, Serialize};
+use ulid::Ulid;
 
 #[derive(Serialize)]
 #[serde(tag = "event", rename_all = "camelCase")]
@@ -9,10 +10,13 @@ pub enum PacketOut {
     },
     #[serde(rename_all = "camelCase")]
     Buzzed {
+        id: Ulid,
         name: Box<str>,
         timestamp_diff: Option<u64>,
     },
-    Select,
+    Select {
+        id: Option<Ulid>,
+    },
     Deselect,
     Clear,
     HostLeft,

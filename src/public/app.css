@@ -255,6 +255,7 @@ body.participate > .participate.panel {
     padding: 0 14px;
     box-sizing: border-box;
     background-color: #202020;
+    transition: background-color 250ms, color 250ms;
 }
 
 .host.panel .buzz:first-of-type {
@@ -266,6 +267,10 @@ body.participate > .participate.panel {
     margin-bottom: 0;
     border-bottom-left-radius: 25px;
     border-bottom-right-radius: 25px;
+}
+
+.host.panel .buzz.selected {
+    background-color: #0F7196;
 }
 
 .host.panel .buzz > .username {
@@ -285,6 +290,10 @@ body.participate > .participate.panel {
 .host.panel .buzz .timestamp {
     font-size: 12px;
     color: #969696;
+}
+
+.host.panel .buzz.selected .timestamp {
+    color: #ededed;
 }
 
 .host.panel .footer.panel .leave.action {

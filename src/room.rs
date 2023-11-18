@@ -54,6 +54,7 @@ impl Room {
                         host_tx
                             .send(
                                 PacketOut::Buzzed {
+                                    id: buzzer.id,
                                     name: buzzer.name.clone(),
                                     timestamp_diff,
                                 }
@@ -64,7 +65,7 @@ impl Room {
                         if matches!(buzz_result, BuzzResult::First) {
                             _ = self_broadcast_tx.send(BroadcastMessage::Single(
                                 run.first_unchecked(),
-                                WsMessage::from(PacketOut::Select),
+                                WsMessage::from(PacketOut::Select { id: None }),
                             ));
                         }
                     }
@@ -78,8 +79,14 @@ impl Room {
                         ));
                         _ = self_broadcast_tx.send(BroadcastMessage::Single(
                             to_notify,
-                            WsMessage::from(PacketOut::Select),
+                            WsMessage::from(PacketOut::Select { id: None }),
                         ));
+                        host_tx
+                            .send(WsMessage::from(PacketOut::Select {
+                                id: Some(to_notify),
+                            }))
+                            .await
+                            .expect("send failed");
                     }
                     RoomMessage::Clear => {
                         run = Run::new();
