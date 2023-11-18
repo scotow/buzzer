@@ -65,7 +65,7 @@ impl Room {
                         if matches!(buzz_result, BuzzResult::First) {
                             _ = self_broadcast_tx.send(BroadcastMessage::Single(
                                 run.first_unchecked(),
-                                WsMessage::from(PacketOut::Select { id: None }),
+                                Arc::new(WsMessage::from(PacketOut::Select { id: None })),
                             ));
                         }
                     }
@@ -75,11 +75,11 @@ impl Room {
                         };
                         _ = self_broadcast_tx.send(BroadcastMessage::Single(
                             to_clear,
-                            WsMessage::from(PacketOut::Deselect),
+                            Arc::new(WsMessage::from(PacketOut::Deselect)),
                         ));
                         _ = self_broadcast_tx.send(BroadcastMessage::Single(
                             to_notify,
-                            WsMessage::from(PacketOut::Select { id: None }),
+                            Arc::new(WsMessage::from(PacketOut::Select { id: None })),
                         ));
                         host_tx
                             .send(WsMessage::from(PacketOut::Select {
@@ -287,7 +287,7 @@ enum RoomMessage {
 #[derive(Clone, Debug)]
 enum BroadcastMessage {
     All(WsMessage),
-    Single(Ulid, WsMessage),
+    Single(Ulid, Arc<WsMessage>),
 }
 
 impl BroadcastMessage {
@@ -301,7 +301,7 @@ impl BroadcastMessage {
     fn inner(self) -> WsMessage {
         match self {
             BroadcastMessage::All(msg) => msg,
-            BroadcastMessage::Single(_, msg) => msg,
+            BroadcastMessage::Single(_, msg) => (*msg).clone(),
         }
     }
 }

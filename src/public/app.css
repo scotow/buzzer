@@ -242,6 +242,7 @@ body.participate > .participate.panel {
 
 .host.panel .inner.panel {
     padding: 8px 6px;
+    scroll-padding: 50px 0;
     overflow-y: auto;
 }
 
@@ -341,7 +342,7 @@ body.participate > .participate.panel {
 
 .participate.panel .inner.panel.waiting::before {
     content: 'Waiting';
-    background-color: #ffa807;
+    background-color: #0F7196;
 }
 
 .buzzer {
@@ -349,8 +350,6 @@ body.participate > .participate.panel {
     height: 200px;
     background: #bd3838;
     border-radius: 50%;
-    /*box-shadow: 0px -12px #803030 inset;*/
-    /*box-shadow:  1px 6px #803030;*/
     box-shadow: 0 12px #803030;
     cursor: pointer;
     transition: box-shadow 125ms, transform 125ms;
@@ -359,11 +358,9 @@ body.participate > .participate.panel {
 .buzzer:hover {
     box-shadow:  0px 10px #803030;
     transform: translateY(2px);
-    /*box-shadow: 0px -6px #803030 inset;*/
 }
 
 .buzzer:active, .buzzer.buzzing {
     box-shadow:  0px 6px #803030;
     transform: translateY(6px);
-    /*box-shadow: 0px -6px #803030 inset;*/
 }

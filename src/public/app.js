@@ -144,7 +144,9 @@ function run(mode, name, socket, panelElem) {
                 switch (mode) {
                     case 'host':
                         panelElem.querySelector('.inner.panel .buzz.selected').classList.remove('selected');
-                        buzzs.find((b) => b.id === data.id)?.elem.classList.add('selected');
+                        const buzzElem = buzzs.find((b) => b.id === data.id).elem;
+                        buzzElem.classList.add('selected');
+                        buzzElem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                         break;
                     case 'participate':
                         panelElem.querySelector('.inner.panel').classList.remove('waiting');
