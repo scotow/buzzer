@@ -209,6 +209,9 @@ function run(mode, name, socket, panelElem) {
                         event.preventDefault();
                         handleClear();
                         break;
+                    case 'ArrowDown':
+                        socket.send(JSON.stringify({ event: 'selectNext' }));
+                        break;
                 }
                 break;
             case 'participate':
