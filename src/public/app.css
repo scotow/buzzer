@@ -46,6 +46,8 @@ body.participate > .participate.panel {
     display: flex;
     visibility: hidden;
     flex-direction: column;
+    width: 90vw;
+    max-height: 90vh;
     background-color: #0F7196;
     border-radius: 25px;
     box-shadow: 0 4px 10px #131313;
@@ -136,7 +138,7 @@ body.participate > .participate.panel {
 
 /* Lobby */
 .lobby.panel {
-    width: 300px;
+    max-width: 300px;
     transform: translate(-50%, -240px);
 }
 
@@ -231,9 +233,8 @@ body.participate > .participate.panel {
 
 /* Hosting */
 .host.panel {
-    width: 500px;
+    max-width: 500px;
     height: 600px;
-    max-height: 80vh;
 }
 
 .host.panel .title.panel {
@@ -312,16 +313,16 @@ body.participate > .participate.panel {
 
 /* Participating */
 .participate.panel {
-    width: 500px;
+    height: 680px;
+    max-width: 500px;
 }
 
 .participate.panel .inner.panel {
-    flex: initial;
     position: relative;
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 500px;
+    padding: 30px 0;
 }
 
 .participate.panel .inner.panel::before {
@@ -346,8 +347,9 @@ body.participate > .participate.panel {
 }
 
 .buzzer {
-    width: 200px;
-    height: 200px;
+    width: 90%;
+    max-width: 200px;
+    aspect-ratio: 1 / 1;
     background: #bd3838;
     border-radius: 50%;
     box-shadow: 0 12px #803030;
