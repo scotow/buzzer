@@ -135,19 +135,12 @@ impl Room {
                                 .expect("send failed");
                         }
                         Ok(_) | Err(_) => {
-                            self_main_tx
-                                .send(RoomMessage::HostLeft)
-                                .await
-                                .expect("send failed");
+                            _ = self_main_tx.send(RoomMessage::HostLeft).await;
                             return;
                         }
                     },
                     Some(Err(_)) | None => {
-                        // TODO: log error.
-                        self_main_tx
-                            .send(RoomMessage::HostLeft)
-                            .await
-                            .expect("send failed");
+                        _ = self_main_tx.send(RoomMessage::HostLeft).await;
                         return;
                     }
                 }
@@ -169,7 +162,6 @@ impl Room {
         let main_tx = self.main.clone();
         let mut broadcast_rx = self.broadcast.subscribe();
 
-        // TODO: if either loop breaks, end the other.
         let rx_handle = tokio::spawn(async move {
             loop {
                 match broadcast_rx.recv().await {
@@ -179,7 +171,6 @@ impl Room {
                         }
                     }
                     Err(_err) => {
-                        // TODO: send "connection lost / room closed" error.
                         _ = tx.close().await;
                         return;
                     }
@@ -187,27 +178,33 @@ impl Room {
             }
         });
         tokio::spawn(async move {
-            main_tx
-                .send(RoomMessage::ParticipantJoin)
-                .await
-                .expect("send failed");
+            if main_tx.send(RoomMessage::ParticipantJoin).await.is_err() {
+                rx_handle.abort();
+                return;
+            }
             loop {
                 match rx.next().await {
-                    Some(Ok(WsMessage::Text(_))) => {
-                        // TODO: parse message and ensure it's a buzz.
-                        if main_tx
-                            .send(RoomMessage::Buzzed(
-                                Arc::clone(&participant),
-                                Instant::now(),
-                            ))
-                            .await
-                            .is_err()
-                        {
+                    Some(Ok(msg)) => match PacketIn::try_from(msg) {
+                        Ok(PacketIn::Buzz) => {
+                            if main_tx
+                                .send(RoomMessage::Buzzed(
+                                    Arc::clone(&participant),
+                                    Instant::now(),
+                                ))
+                                .await
+                                .is_err()
+                            {
+                                rx_handle.abort();
+                                return;
+                            }
+                        }
+                        Ok(_) | Err(_) => {
                             rx_handle.abort();
+                            _ = main_tx.send(RoomMessage::ParticipantLeft).await;
                             return;
                         }
-                    }
-                    Some(Ok(WsMessage::Close(_))) | Some(Ok(_)) | Some(Err(_)) | None => {
+                    },
+                    Some(Err(_)) | None => {
                         rx_handle.abort();
                         _ = main_tx.send(RoomMessage::ParticipantLeft).await;
                         return;
