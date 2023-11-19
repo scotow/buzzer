@@ -1,21 +1,24 @@
-use std::sync::Arc;
+use std::{net::SocketAddr, sync::Arc};
 
-use axum::extract::{Path, Query, State, WebSocketUpgrade};
-use axum::http::{header, HeaderValue, StatusCode};
-use axum::response::IntoResponse;
-use axum::routing::{get, post};
-use axum::{Json, Router};
+use axum::{
+    extract::{Path, Query, State, WebSocketUpgrade},
+    http::{header, HeaderValue, StatusCode},
+    response::IntoResponse,
+    routing::{get, post},
+    Json, Router,
+};
+use clap::Parser;
 use serde::Deserialize;
 use serde_json::json;
 use tokio::sync::Mutex;
 use tower_http::set_header::SetResponseHeaderLayer;
 use ulid::Ulid;
 
-use crate::error::Error;
-use crate::registry::Registry;
+use crate::{error::Error, options::Options, registry::Registry};
 
 mod asset;
 mod error;
+mod options;
 mod packet;
 mod registry;
 mod room;
@@ -25,7 +28,10 @@ const USERNAME_MIN_LEN: usize = 2;
 
 #[tokio::main]
 async fn main() {
-    env_logger::init();
+    let options = Options::parse();
+    env_logger::Builder::new()
+        .filter_level(options.log_level())
+        .init();
     log_panics::init();
 
     let router = Router::new()
@@ -41,7 +47,7 @@ async fn main() {
             HeaderValue::from_static(concat!("Buzzer v", env!("CARGO_PKG_VERSION"))),
         ));
 
-    axum::Server::bind(&"0.0.0.0:8080".parse().unwrap())
+    axum::Server::bind(&SocketAddr::new(options.address, options.port))
         .serve(router.into_make_service())
         .await
         .unwrap();

@@ -1,17 +1,11 @@
-use std::collections::HashMap;
-use std::sync::Weak;
-use std::time::Duration;
+use std::{collections::HashMap, sync::Weak, time::Duration};
 
 use axum::extract::ws::WebSocket;
 use log::{as_display, info, warn};
-use tokio::sync::Mutex;
-use tokio::task::JoinHandle;
-use tokio::time;
+use tokio::{sync::Mutex, task::JoinHandle, time};
 use ulid::Ulid;
 
-use crate::error::Error;
-use crate::room::Room;
-use crate::utils;
+use crate::{error::Error, room::Room, utils};
 
 const ROOM_NAME_MIN_LEN: usize = 3;
 const RESERVATION_TIMEOUT: Duration = Duration::from_secs(15);

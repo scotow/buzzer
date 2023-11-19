@@ -1,15 +1,19 @@
-use std::sync::{Arc, Weak};
-use std::time::Instant;
+use std::{
+    sync::{Arc, Weak},
+    time::Instant,
+};
 
 use axum::extract::ws::{Message as WsMessage, WebSocket};
 use futures::{SinkExt, StreamExt};
-use tokio::sync::broadcast::Sender as BroadcastSender;
-use tokio::sync::mpsc::Sender as MpscSender;
-use tokio::sync::{broadcast, mpsc, Mutex};
+use tokio::sync::{
+    broadcast, broadcast::Sender as BroadcastSender, mpsc, mpsc::Sender as MpscSender, Mutex,
+};
 use ulid::Ulid;
 
-use crate::packet::{PacketIn, PacketOut};
-use crate::registry::Registry;
+use crate::{
+    packet::{PacketIn, PacketOut},
+    registry::Registry,
+};
 
 const CHANNEL_SIZE: usize = 1024;
 
@@ -230,7 +234,8 @@ impl Run {
     }
 
     fn buzz(&mut self, buzzer: Ulid, time: Instant) -> BuzzResult {
-        // Start from the back because it's likely the last participant spamming the buzzer.
+        // Start from the back because it's likely the last participant spamming the
+        // buzzer.
         if self.buzzed.iter().rev().any(|(b, _)| b == &buzzer) {
             return BuzzResult::Already;
         }
