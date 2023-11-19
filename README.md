@@ -26,7 +26,7 @@ Options:
 ## Docker
 
 ```
-docker run ghcr.io/scotow/buzzer/buzzer:latest
+docker run --rm --init -p 8080:8080 ghcr.io/scotow/buzzer/buzzer:latest --address 0.0.0.0
 ```
 
 ## Screenshots
