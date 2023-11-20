@@ -29,8 +29,16 @@ if (localStorage.getItem('username') !== null) {
 document.querySelector('.lobby.panel .input.username > input').addEventListener('change', (event) => {
     localStorage.setItem('username', event.target.value.trim());
 });
-document.querySelector('.lobby.panel .input.room > input').focus();
-document.querySelector('.lobby.panel .input.room > input').select();
+
+const roomPlaceholder = new URLSearchParams(window.location.search).get('room')?.trim();
+if (roomPlaceholder) {
+    document.querySelector('.lobby.panel .input.room > input').value = roomPlaceholder;
+    document.querySelector('.lobby.panel .input.username > input').focus();
+    document.querySelector('.lobby.panel .input.username > input').select();
+} else {
+    document.querySelector('.lobby.panel .input.room > input').focus();
+    document.querySelector('.lobby.panel .input.room > input').select();
+}
 
 function proceed(event) {
     event.preventDefault();
@@ -76,6 +84,10 @@ document.querySelector('.lobby.panel form').addEventListener('submit', proceed);
 function run(mode, name, socket, panelElem) {
     document.body.classList.replace('lobby', mode);
     panelElem.querySelector('.title.panel > .labels > .label').innerText = name;
+
+    const url = new URL(window.location);
+    url.searchParams.set('room', name);
+    window.history.replaceState(null, '', url.toString());
 
     let buzzs = [];
     let buzzed = false;
@@ -210,7 +222,7 @@ function run(mode, name, socket, panelElem) {
                         handleClear();
                         break;
                     case 'ArrowDown':
-                        socket.send(JSON.stringify({ event: 'selectNext' }));
+                        handleSelect();
                         break;
                 }
                 break;
@@ -235,7 +247,6 @@ function run(mode, name, socket, panelElem) {
 
     function exit() {
         socket.close();
-        document.body.classList.replace(mode, 'lobby');
         panelElem.querySelectorAll('.inner.panel .buzz').forEach((elem) => elem.remove());
         panelElem.querySelector('.inner.panel').classList.remove('selected', 'waiting');
         panelElem.querySelector('.buzzer')?.removeEventListener('click', handleBuzz);
@@ -244,6 +255,11 @@ function run(mode, name, socket, panelElem) {
         panelElem.querySelector('.select.action')?.removeEventListener('click', handleSelect);
         window.removeEventListener('keydown', keyDown);
         window.removeEventListener('keyup', keyUp);
+
+        const url = new URL(window.location);
+        url.searchParams.delete('room');
+        window.history.replaceState(null, '', url.toString());
+        document.body.classList.replace(mode, 'lobby');
     }
 
     panelElem.querySelector('.buzzer')?.addEventListener('click', handleBuzz);
